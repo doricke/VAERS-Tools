@@ -1,0 +1,1 @@
+ruby vaers_tally.rb > R_tally.tsv

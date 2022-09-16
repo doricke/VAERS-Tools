@@ -1,0 +1,1 @@
+ruby vaers_slice.rb dysmenorrhoea.txt > R_dysmenorrhoea.tsv
