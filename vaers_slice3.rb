@@ -132,6 +132,7 @@ def read_data( filename, data )
         data[ vaers_id ][ :gender ] = tokens[ 6 ]
         data[ vaers_id ][ :died ] = tokens[9]
         data[ vaers_id ][ :onset ] = tokens[20].to_i
+        data[ vaers_id ][ :onset ] = -1 if tokens[20].size < 1
         parts = tokens[1].split( "/" )    # RECVDATE
         data[ vaers_id ][ :year ] = parts[2].to_i
       end  # if
@@ -147,6 +148,8 @@ def dose_report( data, select )
   puts "Dose report"
   tally = {}
   vax_tally = {}
+  shots = {}
+  yearly_shots = {}
   select.keys.each do |symptom|
     data.keys.each do |id|
       if ! data[id].nil? && ! data[id][:symptoms].nil? && ! data[id][ :vax ].nil? && data[id][:symptoms][symptom]
@@ -156,6 +159,12 @@ def dose_report( data, select )
           vax_type = vax_record[:vax_type]
           vax_year = data[id][:year]
           gender = data[id][ :gender ]
+          shots[ vax_name ] = 0 if shots[ vax_name ].nil?
+          shots[ vax_name ] += 1
+          yearly_shots[ vax_name ] = {} if yearly_shots[ vax_name ].nil?
+          yearly_shots[ vax_name ][ vax_year ] = 0 if yearly_shots[ vax_name ][ vax_year ].nil?
+          yearly_shots[ vax_name ][ vax_year ] += 1
+
           tally[ vax_name ] = {} if tally[ vax_name ].nil?
           tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
           tally[ vax_name ][ vax_dose ] += 1 
@@ -173,11 +182,23 @@ def dose_report( data, select )
           vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
           vax_tally[ vax_name ] += 1
         end  # do
+      else
+        if ! data[id].nil? && ! data[id][ :vax ].nil?
+          data[id][ :vax ].each do |vax_record|
+            vax_name = vax_record[:vax_name]
+            vax_year = data[id][:year]
+            shots[ vax_name ] = 0 if shots[ vax_name ].nil?
+            shots[ vax_name ] += 1
+            yearly_shots[ vax_name ] = {} if yearly_shots[ vax_name ].nil?
+            yearly_shots[ vax_name ][ vax_year ] = 0 if yearly_shots[ vax_name ][ vax_year ].nil?
+            yearly_shots[ vax_name ][ vax_year ] += 1
+          end  # do
+        end  # if
       end  # if
     end  # do
   end  # do
 
-  print "Vaccine Name\tFemale:Male"
+  print "Vaccine Name\tShots\tFemale:Male"
   DOSE_NAMES.each do |dose_name|
     print "\t#{dose_name}"
   end  # do
@@ -195,7 +216,7 @@ def dose_report( data, select )
   vax_names = vax_tally.sort_by{ |vax_name, count| -count }
 
   vax_names.each do |vax_name, count|
-    print "#{vax_name}"
+    print "#{vax_name}\t#{shots[vax_name]}"
     gender_ratio = 0.0
     if ! tally[ vax_name ][ "M" ].nil? && ! tally[ vax_name ][ "F" ].nil? && (tally[ vax_name ][ "M" ][ "All" ] > 0)
       gender_ratio = tally[ vax_name ][ "F" ][ "All" ].to_f / tally[ vax_name ][ "M" ][ "All" ].to_f
@@ -237,6 +258,46 @@ def dose_report( data, select )
       count = 0
       count = tally[ vax_name ][ year ] if ! tally[ vax_name ][ year ].nil?
       print "\t#{count}"
+    end  # for
+    print "\n"
+  end  # do
+
+  # Yearly number of shots
+  puts "\nYear shots report"
+  print "Vaccine Name\tAll"
+  for year in (2023..1990).step(-1) do
+    print "\t#{year}"
+  end  # for
+  print "\n"
+
+  vax_names.each do |vax_name, count|
+    print "#{vax_name}"
+    print "\t#{shots[vax_name]}"
+    for year in (2023..1990).step(-1) do
+      count = 0
+      count = yearly_shots[ vax_name ][ year ] if ! yearly_shots[ vax_name ][ year ].nil?
+      print "\t#{count}"
+    end  # for
+    print "\n"
+  end  # do
+
+  # Yearly symptoms frequency
+  puts "\nYear frequency report per 100,000 vaccine shots"
+  print "Vaccine Name\tAll"
+  for year in (2023..1990).step(-1) do
+    print "\t#{year}"
+  end  # for
+  print "\n"
+
+  vax_names.each do |vax_name, count|
+    print "#{vax_name}"
+    freq = 0.0
+    freq = tally[vax_name]['All'].to_f * 100000.0 / shots[vax_name].to_f if ! shots[vax_name].nil? && shots[vax_name] > 0
+    print "\t#{freq}"
+    for year in (2023..1990).step(-1) do
+      freq = 0.0
+      freq = yearly_shots[ vax_name ][ year ].to_f * 100000.0 / tally[ vax_name ][ year ].to_f if ! yearly_shots[ vax_name ][ year ].nil? && ! tally[ vax_name ][ year ].nil?
+      print "\t#{freq}"
     end  # for
     print "\n"
   end  # do
@@ -421,7 +482,7 @@ def onset_report_write( vax_names, dose_names, tally )
   print "\n"
 
   # Print out the onset table.
-  for onset in 0..120 do
+  for onset in -1..120 do
     print "#{onset}"
     vax_names.each do |vax_name, count|
       dose_names.each do |dose_name|

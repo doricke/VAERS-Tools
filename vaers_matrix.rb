@@ -11,6 +11,7 @@ class VaersMatrix
 DOSE_NAMES = ["All", "1", "2", "3", "4", "5", "6", "7+", "UNK", "N/A"]
 DOSE_NAMES4 = ["All", "1", "2", "3", "4"]
 GENDERS = ["M", "F"]
+MAX_SHOTS = 25
 
 ################################################################################
 def read_symptoms( filename )
@@ -54,7 +55,8 @@ def scan_data( filename, data )
     if ( ! line.nil? ) && ( line.length > 0 )
       tokens = TextTools::csv_split( line )
       vaers_id = tokens[0].to_i
-      age = tokens[3]
+      age = tokens[3].to_i
+      age = -1 if tokens[3].nil? || tokens[3].size < 1
       died = tokens[9]
       onset = tokens[20]
       data[vaers_id] = {} if data[vaers_id ].nil?
@@ -64,6 +66,8 @@ def scan_data( filename, data )
       data[ vaers_id ][ :died ] = died
       data[ vaers_id ][ :sex ] = sex
       data[ vaers_id ][ :onset ] = onset
+      parts = tokens[1].split( "/" )    #RECVDATE
+      data[ vaers_id ][ :year ] = parts[2].to_i
       # puts "#{vaers_id}\tAge: #{age}\tSex: #{sex}\tOnset: #{onset}"
     end  # if
   end  # while
@@ -84,8 +88,8 @@ def scan_vax( filename, data )
       vaers_id = tokens[0].to_i
       vax_type = tokens[1]
       vax_dose = tokens[4]
-      # vax_name = tokens[7]
-      vax_name = vax_type
+      vax_name = tokens[7]
+      # vax_name = vax_type
       if ( ! data[ vaers_id ].nil? ) 
         vax_rec = { :vax_name => vax_name, :vax_dose => vax_dose }
         data[ vaers_id ][ :vax ] = [] if data[ vaers_id ][ :vax ].nil?
@@ -124,6 +128,95 @@ def scan_vax2( filename, data )
 end  # scan_vax2
 
 ################################################################################
+def report_by_age( data )
+  puts "\nReport by age"
+  tally = {}
+  vax_tally = {}
+  vax_gender_age = {}
+  vax_gender_tally = {}
+  data.keys.each do |id|
+    if ! data[id].nil? && ! data[id][:vax].nil?
+      data[id][:vax].each do |vax_rec|
+        vax_name = vax_rec[:vax_name]
+        age = data[id][:age]
+        sex = data[ id ][ :sex ]
+        tally[ vax_name ] = {} if tally[ vax_name ].nil?
+        tally[ vax_name ][ age ] = 0 if tally[ vax_name ][ age ].nil?
+        tally[ vax_name ][ age ] += 1
+        vax_gender_age[ vax_name ] = {} if vax_gender_age[ vax_name ].nil?
+        vax_gender_age[ vax_name ][ sex ] = {} if vax_gender_age[ vax_name ][ sex ].nil?
+        vax_gender_age[ vax_name ][ sex ][ age ] = 0 if vax_gender_age[ vax_name ][ sex ][ age ].nil?
+        vax_gender_age[ vax_name ][ sex ][ age ] += 1
+        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+        vax_tally[ vax_name ] += 1
+        vax_gender_tally[ vax_name ] = {} if vax_gender_tally[ vax_name ].nil?
+        vax_gender_tally[ vax_name ][ sex ] = 0 if vax_gender_tally[ vax_name ][ sex ].nil?
+        vax_gender_tally[ vax_name ][ sex ] += 1
+      end  # do
+    end  # if
+  end # do
+
+  vax_names = vax_tally.sort_by{ |vax_name, count| -count }
+
+  # Print out the header.
+  print "Age"
+  vax_names.each do |vax_name, count|
+    print "\t#{vax_name}"
+  end  # do
+  print "\tFemale"
+  vax_names.each do |vax_name, count|
+    print "\t#{vax_name}"
+  end  # do
+  print "\tMale"
+  vax_names.each do |vax_name, count|
+    print "\t#{vax_name}"
+  end  # do
+  print "\n"
+
+  # Print out the total counts.
+  print "All"
+  vax_names.each do |vax_name, count|
+    print "\t#{count}"
+  end  # do
+  print "\tFemale"
+  vax_names.each do |vax_name, x|
+    count = 0
+    count = vax_gender_tally[ vax_name ][ 'F' ] if ! vax_gender_tally[ vax_name ][ 'F' ].nil?
+    print "\t#{count}"
+  end  # do
+  print "\tMale"
+  vax_names.each do |vax_name, x|
+    count = 0
+    count = vax_gender_tally[ vax_name ][ 'M' ] if ! vax_gender_tally[ vax_name ][ 'M' ].nil?
+    print "\t#{count}"
+  end  # do
+  print "\n"
+
+  # Print out the age report table.
+  for age in -1..120 do
+    print "#{age}"
+    vax_names.each do |vax_name, count|
+      count = ""
+      count = tally[ vax_name ][ age ] if ! tally[ vax_name ].nil? && ! tally[ vax_name ][ age ].nil?
+      print "\t#{count}"
+    end  # do
+    print "\t#{age}"
+    vax_names.each do |vax_name, count|
+      count = ""
+      count = vax_gender_age[ vax_name ][ 'F' ][ age ] if ! vax_gender_age[ vax_name ].nil? && ! vax_gender_age[ vax_name ][ 'F' ].nil? && ! vax_gender_age[ vax_name ][ 'F' ][ age ].nil?
+      print "\t#{count}"
+    end  # do
+    print "\t#{age}"
+    vax_names.each do |vax_name, count|
+      count = ""
+      count = vax_gender_age[ vax_name ][ 'M' ][ age ] if ! vax_gender_age[ vax_name ].nil? && ! vax_gender_age[ vax_name ][ 'M' ].nil? && ! vax_gender_age[ vax_name ][ 'M' ][ age ].nil?
+      print "\t#{count}"
+    end  # do
+    print "\n"
+  end  # do
+end  # report_by_age
+
+################################################################################
 def report_by_dose( data )
   puts "\nReport by dose"
   # Tally up the doses by vaccine manufacturer and by dose
@@ -131,11 +224,13 @@ def report_by_dose( data )
   aes = {}
   sym_names = {}
   vax_tally = {}
+  yearly_shots = {}
   data.keys.each do |id|
     if ! data[id].nil? && ! data[id][:vax].nil?
       data[id][:vax].each do |vax_rec|
         vax_name = vax_rec[:vax_name]
         vax_dose = vax_rec[:vax_dose]
+        vax_year = data[id][:year]
         tally[ vax_name ] = {} if tally[ vax_name ].nil?
         tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
         tally[ vax_name ][ vax_dose ] += 1
@@ -143,7 +238,11 @@ def report_by_dose( data )
         tally[ vax_name ][ "All" ] += 1
         vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
         vax_tally[ vax_name ] += 1
-    
+   
+        yearly_shots[ vax_name ] = {} if yearly_shots[ vax_name ].nil?
+        yearly_shots[ vax_name ][ vax_year ] = 0 if yearly_shots[ vax_name ][ vax_year ].nil?
+        yearly_shots[ vax_name ][ vax_year ] += 1
+
         if ! data[id][:symptoms].nil?
           aes[ vax_name ] = {} if aes[ vax_name ].nil? && ! vax_name.nil?
           aes_list = data[id][:symptoms].keys 
@@ -187,6 +286,25 @@ def report_by_dose( data )
     print "\n"
   end  # do
 
+  # Summary of adverse events by year
+  puts "\nYear report"
+  print "Vaccine Name\tAll"
+  for year in (2023..1990).step(-1) do
+    print "\t#{year}"
+  end  # for
+  print "\n"
+
+  vax_names.each do |vax_name, count|
+    print "#{vax_name}"
+    print "\t#{tally[vax_name]['All']}"
+    for year in (2023..1990).step(-1) do
+      count = 0
+      count = yearly_shots[ vax_name ][ year ] if ! yearly_shots[ vax_name ][ year ].nil?
+      print "\t#{count}"
+    end  # for
+    print "\n"
+  end  # do
+
   puts "\nAdverse Events Matrix"
   print "Symptom"
   # aes.keys.each do |vax_name|
@@ -215,7 +333,7 @@ def report_by_onset( data )
   vax_tally = {}
 
   data.keys.each do |id|
-    if ! data[id].nil? && ! data[id][:vax].nil? && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
+    if ! data[id].nil? && ! data[id][:vax].nil? # && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
       data[id][:vax].each do |vax_rec|
         vax_name = vax_rec[:vax_name]
         vax_dose = vax_rec[:vax_dose]
@@ -278,6 +396,7 @@ def report_by_onset( data )
     end  # do
     print "\n"
   end  # for
+
 end  # report_by_onset
 
 ################################################################################
@@ -286,7 +405,7 @@ def report_by_onset_all( data )
   tally = {}
   vax_tally = {}
   data.keys.each do |id|
-    if ! data[id].nil? && ! data[id][:vax].nil? && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
+    if ! data[id].nil? && ! data[id][:vax].nil? # && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
       data[id][:vax].each do |vax_rec|
         vax_name = vax_rec[:vax_name]
         onset = data[id][:onset].to_i
@@ -311,6 +430,13 @@ def report_by_onset_all( data )
   end  # do
   print "\n"
 
+  # Print total counts.
+  print "All"
+  vax_names.each do |vax_name, count|
+    print "\t#{count}"
+  end  # do
+  print "\n"
+
   for onset in 0..120 do
     print "#{onset}"
     vax_names.each do |vax_name, count|
@@ -320,7 +446,56 @@ def report_by_onset_all( data )
     end  # do
     print "\n"
   end  # for
+
+  return vax_tally, tally
 end  # report_by_onset_all
+
+################################################################################
+def report_by_shots( data )
+  puts "\nReport by shots"
+  tally = {}
+  vax_tally = {}
+  data.keys.each do |id|
+    if ! data[id].nil? && ! data[id][:vax].nil? # && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
+      data[id][:vax].each do |vax_rec|
+        vax_name = vax_rec[:vax_name]
+        vax_shots = data[id][ :vax ].size
+        tally[ vax_name ] = {} if tally[ vax_name ].nil?
+        tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
+        tally[ vax_name ][ vax_shots ][ id ] = true
+        tally[ vax_name ][ :all ] = {} if tally[ vax_name ][ :all ].nil?
+        tally[ vax_name ][ :all ][ id ] = true
+
+        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+        vax_tally[ vax_name ] += 1
+      end  # do
+    end  # if
+  end  # do
+
+  vax_names = vax_tally.sort_by{ |vax_name, count| -count }
+
+  # Print table contents by increasing onset.
+  print "Shots\tAll"
+  for shots in 1..MAX_SHOTS do
+    print "\t#{shots}"
+  end  # for
+  print "\n"
+
+  vax_names.each do |vax_name, count|
+    print "#{vax_name}"
+    total = 0
+    total = tally[ vax_name ][ :all ].keys.size if ! tally[ vax_name ][ :all ].nil?
+    print "\t#{total}"
+    for shots in 1..MAX_SHOTS do
+      if tally[ vax_name ][ shots ].nil?
+        print "\t"
+      else
+        print "\t#{tally[vax_name][shots].keys.size}"
+      end  # if
+    end  # for
+    print "\n"
+  end  # do
+end  # report_by_shots
 
 ################################################################################
 def filter_symptoms( data )
@@ -353,44 +528,16 @@ def vaers_main()
   app = VaersMatrix.new
   symptoms = {}
 
-  data = app.load_year( "1990", symptoms, data )
-  data = app.load_year( "1991", symptoms, data )
-  data = app.load_year( "1992", symptoms, data )
-  data = app.load_year( "1993", symptoms, data )
-  data = app.load_year( "1994", symptoms, data )
-  data = app.load_year( "1995", symptoms, data )
-  data = app.load_year( "1996", symptoms, data )
-  data = app.load_year( "1997", symptoms, data )
-  data = app.load_year( "1998", symptoms, data )
-  data = app.load_year( "1999", symptoms, data )
-  data = app.load_year( "2000", symptoms, data )
-  data = app.load_year( "2001", symptoms, data )
-  data = app.load_year( "2002", symptoms, data )
-  data = app.load_year( "2003", symptoms, data )
-  data = app.load_year( "2004", symptoms, data )
-  data = app.load_year( "2005", symptoms, data )
-  data = app.load_year( "2006", symptoms, data )
-  data = app.load_year( "2007", symptoms, data )
-  data = app.load_year( "2008", symptoms, data )
-  data = app.load_year( "2009", symptoms, data )
-  data = app.load_year( "2010", symptoms, data )
-  data = app.load_year( "2011", symptoms, data )
-  data = app.load_year( "2012", symptoms, data )
-  data = app.load_year( "2013", symptoms, data )
-  data = app.load_year( "2014", symptoms, data )
-  data = app.load_year( "2015", symptoms, data )
-  data = app.load_year( "2016", symptoms, data )
-  data = app.load_year( "2017", symptoms, data )
-  data = app.load_year( "2018", symptoms, data )
-  data = app.load_year( "2019", symptoms, data )
-  data = app.load_year( "2020", symptoms, data )
-  data = app.load_year( "2021", symptoms, data )
-  data = app.load_year( "2022", symptoms, data )
-  data = app.load_year( "2023", symptoms, data )
+  # for year in 2022..2023 do
+  for year in 1990..2023 do
+    data = app.load_year( year.to_s, symptoms, data )
+  end  # for
   data = app.load_year( "NonDomestic", symptoms, data )
   # data = app.filter_symptoms( data )
   app.report_by_dose( data )
   app.report_by_onset_all( data )
+  app.report_by_age( data )
+  app.report_by_shots( data )
 end  # vaers_main
 
 ################################################################################

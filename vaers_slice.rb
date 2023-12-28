@@ -1,8 +1,9 @@
 
 ################################################################################
 # Author::      Darrell O. Ricke, Ph.D.  (mailto: d_ricke@yahoo.com)
-# Copyright::   Copyright (C) 2022 Darrell O. Ricke, Ph.D.
+# Copyright::   Copyright (C) 2022 Darrell O. Ricke, Ph.D., Molecular BioInsights
 # License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
+# Contact::     Molecular BioInsights, 37 Pilgrim Dr., MA 01890
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -18,9 +19,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-require 'input_file.rb'
-require 'table.rb'
-require 'text_tools.rb'
+require './input_file'
+require './table'
+require './text_tools'
 
 ################################################################################
 class VaersSlice
@@ -127,6 +128,7 @@ def read_data( filename, data )
         data[ vaers_id ][ :gender ] = tokens[ 6 ]
         data[ vaers_id ][ :died ] = tokens[9]
         data[ vaers_id ][ :onset ] = tokens[20].to_i
+        data[ vaers_id ][ :onset ] = -1 if tokens[20].size < 1
       end  # if
     end  # if
   end  # do
@@ -318,7 +320,7 @@ def onset_report_write( vax_names, dose_names, tally )
   print "\n"
 
   # Print out the onset table.
-  for onset in 0..120 do
+  for onset in -1..120 do
     print "#{onset}"
     vax_names.each do |vax_name, count|
       dose_names.each do |dose_name|
@@ -494,7 +496,7 @@ def vaers_main( select_filename )
   report_select( select )
 
   # Read in the VAERS yearly datafiles.
-  for year in 1990..2022 do
+  for year in 1990..2023 do
     data = load_year( year.to_s, select, vaccines, data )
   end  # for
   data = load_year( "NonDomestic", select, vaccines, data )
