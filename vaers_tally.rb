@@ -1,23 +1,4 @@
 
-################################################################################
-# Author::      Darrell O. Ricke, Ph.D.  (mailto: d_ricke@yahoo.com)
-# Copyright::   Copyright (C) 2022 Darrell O. Ricke, Ph.D.
-# License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-################################################################################
-
 require 'input_file.rb'
 require 'table.rb'
 require 'text_tools.rb'
@@ -73,8 +54,10 @@ def scan_data( filename, data )
       tokens = TextTools::csv_split( line )
       vaers_id = tokens[0].to_i
       age = tokens[3]
+      age = -1 if tokens[3].size < 1
       died = tokens[9]
       onset = tokens[20]
+      onset = -1 if tokens[20].size < 1
       data[vaers_id] = {} if data[vaers_id ].nil?
       sex = tokens[6]
       onset = tokens[20].to_i
@@ -258,7 +241,7 @@ def report_by_onset( data )
   end  # do
   print "\n"
 
-  for onset in 0..120 do
+  for onset in -1..120 do
     vax_names.each do |vax_name, count|
       total = tally[vax_name][:all][onset]
       print "#{vax_name}\t#{onset}\t#{total}\t#{tally[vax_name][:dose1][onset]}\t#{tally[vax_name][:dose2][onset]}\t"
@@ -303,7 +286,7 @@ def report_by_onset_all( data )
   end  # do
   print "\n"
 
-  for onset in 0..120 do
+  for onset in -1..120 do
     print "#{onset}"
     vax_names.each do |vax_name, count|
       total = 0
