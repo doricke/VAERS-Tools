@@ -231,38 +231,41 @@ def report_by_dose( data )
         vax_name = vax_rec[:vax_name]
         vax_dose = vax_rec[:vax_dose]
         vax_year = data[id][:year]
-        tally[ vax_name ] = {} if tally[ vax_name ].nil?
-        tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
-        tally[ vax_name ][ vax_dose ] += 1
-        tally[ vax_name ][ "All" ] = 0 if tally[ vax_name ][ "All" ].nil?
-        tally[ vax_name ][ "All" ] += 1
-        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-        vax_tally[ vax_name ] += 1
-   
-        yearly_shots[ vax_name ] = {} if yearly_shots[ vax_name ].nil?
-        yearly_shots[ vax_name ][ vax_year ] = 0 if yearly_shots[ vax_name ][ vax_year ].nil?
-        yearly_shots[ vax_name ][ vax_year ] += 1
-
-        if ! data[id][:symptoms].nil?
-          aes[ vax_name ] = {} if aes[ vax_name ].nil? && ! vax_name.nil?
-          aes_list = data[id][:symptoms].keys 
-          aes_list.each do |ae|
-            if ! vax_name.nil?
-              # Tally the adverse events by symptom name
-              if sym_names[ ae ].nil?
-                sym_names[ ae ] = 1
-              else
-                sym_names[ ae ] += 1
+        age = data[id][ :age ]
+        if age < 3 && age >= 0
+          tally[ vax_name ] = {} if tally[ vax_name ].nil?
+          tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
+          tally[ vax_name ][ vax_dose ] += 1
+          tally[ vax_name ][ "All" ] = 0 if tally[ vax_name ][ "All" ].nil?
+          tally[ vax_name ][ "All" ] += 1
+          vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+          vax_tally[ vax_name ] += 1
+     
+          yearly_shots[ vax_name ] = {} if yearly_shots[ vax_name ].nil?
+          yearly_shots[ vax_name ][ vax_year ] = 0 if yearly_shots[ vax_name ][ vax_year ].nil?
+          yearly_shots[ vax_name ][ vax_year ] += 1
+  
+          if ! data[id][:symptoms].nil?
+            aes[ vax_name ] = {} if aes[ vax_name ].nil? && ! vax_name.nil?
+            aes_list = data[id][:symptoms].keys 
+            aes_list.each do |ae|
+              if ! vax_name.nil?
+                # Tally the adverse events by symptom name
+                if sym_names[ ae ].nil?
+                  sym_names[ ae ] = 1
+                else
+                  sym_names[ ae ] += 1
+                end  # if
+  
+                # Tally the adverse events by vaccine name 
+                if aes[ vax_name ][ ae ].nil?
+                  aes[ vax_name ][ ae ] = 1
+                else
+                  aes[ vax_name ][ ae ] += 1
+                end  # if
               end  # if
-
-              # Tally the adverse events by vaccine name 
-              if aes[ vax_name ][ ae ].nil?
-                aes[ vax_name ][ ae ] = 1
-              else
-                aes[ vax_name ][ ae ] += 1
-              end  # if
-            end  # if
-          end  # do
+            end  # do
+          end  # if
         end  # if
       end  # do
     end  # if
@@ -289,7 +292,7 @@ def report_by_dose( data )
   # Summary of adverse events by year
   puts "\nYear report"
   print "Vaccine Name\tAll"
-  for year in (2023..1990).step(-1) do
+  for year in (2024..1990).step(-1) do
     print "\t#{year}"
   end  # for
   print "\n"
@@ -297,7 +300,7 @@ def report_by_dose( data )
   vax_names.each do |vax_name, count|
     print "#{vax_name}"
     print "\t#{tally[vax_name]['All']}"
-    for year in (2023..1990).step(-1) do
+    for year in (2024..1990).step(-1) do
       count = 0
       count = yearly_shots[ vax_name ][ year ] if ! yearly_shots[ vax_name ][ year ].nil?
       print "\t#{count}"
@@ -460,14 +463,17 @@ def report_by_shots( data )
       data[id][:vax].each do |vax_rec|
         vax_name = vax_rec[:vax_name]
         vax_shots = data[id][ :vax ].size
-        tally[ vax_name ] = {} if tally[ vax_name ].nil?
-        tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
-        tally[ vax_name ][ vax_shots ][ id ] = true
-        tally[ vax_name ][ :all ] = {} if tally[ vax_name ][ :all ].nil?
-        tally[ vax_name ][ :all ][ id ] = true
+        age = data[id][ :age ]
+        if age < 3 && age >= 0
+          tally[ vax_name ] = {} if tally[ vax_name ].nil?
+          tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
+          tally[ vax_name ][ vax_shots ][ id ] = true
+          tally[ vax_name ][ :all ] = {} if tally[ vax_name ][ :all ].nil?
+          tally[ vax_name ][ :all ][ id ] = true
 
-        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-        vax_tally[ vax_name ] += 1
+          vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+          vax_tally[ vax_name ] += 1
+        end  # if
       end  # do
     end  # if
   end  # do
@@ -528,8 +534,7 @@ def vaers_main()
   app = VaersMatrix.new
   symptoms = {}
 
-  # for year in 2022..2023 do
-  for year in 1990..2023 do
+  for year in 1990..2024 do
     data = app.load_year( year.to_s, symptoms, data )
   end  # for
   data = app.load_year( "NonDomestic", symptoms, data )

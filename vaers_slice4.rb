@@ -272,7 +272,7 @@ def dose_report( data, select )
   # Summary of adverse events by year
   puts "\nYear report"
   print "Vaccine Name\tAll"
-  for year in (2023..1990).step(-1) do
+  for year in (2024..1990).step(-1) do
     print "\t#{year}"
   end  # for
   print "\n"
@@ -280,7 +280,7 @@ def dose_report( data, select )
   vax_names.each do |vax_name, count|
     print "#{vax_name}"
     print "\t#{tally[vax_name]['All'].keys.size}"
-    for year in (2023..1990).step(-1) do
+    for year in (2024..1990).step(-1) do
       count = 0
       count = tally[ vax_name ][ year ].keys.size if ! tally[ vax_name ][ year ].nil?
       print "\t#{count}"
@@ -291,7 +291,7 @@ def dose_report( data, select )
   # Yearly number of shots
   puts "\nYear shots report"
   print "Vaccine Name\tAll"
-  for year in (2023..1990).step(-1) do
+  for year in (2024..1990).step(-1) do
     print "\t#{year}"
   end  # for
   print "\n"
@@ -299,7 +299,7 @@ def dose_report( data, select )
   vax_names.each do |vax_name, count|
     print "#{vax_name}"
     print "\t#{shots[vax_name].keys.size}"
-    for year in (2023..1990).step(-1) do
+    for year in (2024..1990).step(-1) do
       count = 0
       count = yearly_shots[ vax_name ][ year ].keys.size if ! yearly_shots[ vax_name ][ year ].nil?
       print "\t#{count}"
@@ -310,7 +310,7 @@ def dose_report( data, select )
   # Yearly symptoms frequency
   puts "\nYear frequency report per 100,000 vaccine shots"
   print "Vaccine Name\tAll"
-  for year in (2023..1990).step(-1) do
+  for year in (2024..1990).step(-1) do
     print "\t#{year}"
   end  # for
   print "\n"
@@ -321,7 +321,7 @@ def dose_report( data, select )
     freq = tally[vax_name]['All'].keys.size.to_f * 100000.0 / shots[vax_name].keys.size.to_f if ! shots[vax_name].nil? && shots[vax_name].keys.size > 0
 
     print "\t#{'%.1f' % freq}"
-    for year in (2023..1990).step(-1) do
+    for year in (2024..1990).step(-1) do
       freq = 0.0
       freq = tally[ vax_name ][ year ].keys.size.to_f * 100000.0 / yearly_shots[ vax_name ][ year ].keys.size.to_f if ! yearly_shots[ vax_name ][ year ].nil? && ! tally[ vax_name ][ year ].nil?
       print "\t#{'%.1f' % freq}"
@@ -334,13 +334,36 @@ end  # dose_report
 def shots_report( data, select )
   puts "\nVaccine shots report"
   tally = {}
+  combo_tally = {}
+  combo_shots = {}
   vax_tally = {}
   shots_tally = {}
 
-  # Tally up the symptom by number of vaccine shots.
+  # Tally up the vaccine shots by concurrent count by vaccine.
+  data.keys.each do |id|
+    if ! data[id].nil? && ! data[id][ :vax ].nil? 
+      v_names = {}
+      data[id][ :vax ].each do |vax_record|
+        vax_name = vax_record[:vax_name]
+        vax_shots = data[id][ :vax ].size
+        v_names[ vax_name ] = true
+
+        shots_tally[ vax_name ] = {} if shots_tally[ vax_name ].nil?
+        shots_tally[ vax_name ][ vax_shots ] = {} if shots_tally[ vax_name ][ vax_shots ].nil?
+        shots_tally[ vax_name ][ vax_shots ][ id ] = true
+      end  # do
+
+      combo_names = v_names.keys.sort.join( "+" )
+      combo_shots[ combo_names ] = 0 if combo_shots[ combo_names ].nil?
+      combo_shots[ combo_names ] += 1
+    end  # if
+  end  # do
+
+# Tally up the symptom by number of vaccine shots.
   select.keys.each do |symptom|
     data.keys.each do |id|
       if ! data[id].nil? && ! data[id][:symptoms].nil? && ! data[id][ :vax ].nil? && data[id][:symptoms][symptom]
+        v_names = {}
         data[id][ :vax ].each do |vax_record|
           vax_name = vax_record[:vax_name]
           tally[ vax_name ] = {} if tally[ vax_name ].nil?
@@ -352,7 +375,12 @@ def shots_report( data, select )
 
           vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
           vax_tally[ vax_name ] += 1
+          v_names[ vax_name ] = true
         end  # do
+
+        combo_names = v_names.keys.sort.join( "+" )
+        combo_tally[ combo_names ] = 0 if combo_tally[ combo_names ].nil?
+        combo_tally[ combo_names ] += 1
       end  # if
     end  # do
   end  # do
@@ -375,10 +403,23 @@ def shots_report( data, select )
       if tally[ vax_name ][ shots ].nil?
         print "\t0"
       else
-        print "\t#{tally[vax_name][shots].keys.size}"
+        shots_given = 0
+        shots_given = shots_tally[ vax_name ][ shots ].keys.size if ! shots_tally[ vax_name ].nil? && ! shots_tally[ vax_name ][ shots ].nil?
+        count = tally[ vax_name ][ shots ].keys.size
+        freq = count.to_f * 100000.0 / shots_given 
+        print "\t#{tally[vax_name][shots].keys.size}|#{shots_given}|#{'%.1f' % freq}"
       end  # if
     end  # do
     print "\n"
+  end  # do
+
+  # Print out combination tallies
+  puts "\nVaccine combination shots report"
+  puts "Combination\tReports\tShots\tFrequency"
+  combo_order = combo_tally.keys.sort
+  combo_order.each do |v_name|
+    freq = combo_tally[v_name].to_f * 100000.0 / combo_shots[v_name]
+    print "#{v_name}\t#{combo_tally[v_name]}\t#{combo_shots[v_name]}\t#{freq}\n" if combo_shots[v_name] >= 10
   end  # do
 end  # shots_report
 
@@ -1018,8 +1059,8 @@ def vaers_main( select_filename )
   report_select( select )
 
   # Read in the VAERS yearly datafiles.
-  # for year in 2022..2023 do
-  for year in 1990..2023 do
+  # for year in 2022..2024 do
+  for year in 1990..2024 do
     data = load_year( year.to_s, select, vaccines, data )
   end  # for
   data = load_year( "NonDomestic", select, vaccines, data )
