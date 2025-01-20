@@ -101,8 +101,8 @@ def read_vax( filename, data, vaccines )
       vax_dose  = tokens[4]
       vax_route = tokens[5]
       vax_site  = tokens[6]
-      # vax_name = tokens[7]
-      vax_name = vax_type
+      vax_name = tokens[7]
+      # vax_name = vax_type
       data[vaers_id] = {} if data[vaers_id].nil?
       vax_record = { :vax_name => vax_name, :vax_type => vax_type, :vax_dose => vax_dose, :vax_manu => vax_manu, :vax_lot => vax_lot, :vax_route => vax_route, :vax_site => vax_site }
       data[ vaers_id ][ :vax ] = [] if data[ vaers_id ][ :vax ].nil?
@@ -336,26 +336,39 @@ def shots_report( data, select )
   tally = {}
   combo_tally = {}
   combo_shots = {}
+  combo_age = {}
+  age_tally = {}
   vax_tally = {}
   shots_tally = {}
 
   # Tally up the vaccine shots by concurrent count by vaccine.
   data.keys.each do |id|
     if ! data[id].nil? && ! data[id][ :vax ].nil? 
-      v_names = {}
-      data[id][ :vax ].each do |vax_record|
-        vax_name = vax_record[:vax_name]
-        vax_shots = data[id][ :vax ].size
-        v_names[ vax_name ] = true
-
-        shots_tally[ vax_name ] = {} if shots_tally[ vax_name ].nil?
-        shots_tally[ vax_name ][ vax_shots ] = {} if shots_tally[ vax_name ][ vax_shots ].nil?
-        shots_tally[ vax_name ][ vax_shots ][ id ] = true
-      end  # do
-
-      combo_names = v_names.keys.sort.join( "+" )
-      combo_shots[ combo_names ] = 0 if combo_shots[ combo_names ].nil?
-      combo_shots[ combo_names ] += 1
+      age = data[id][:age].to_i
+      if (age >= 0) && (age <= 10)
+        v_names = {}
+        data[id][ :vax ].each do |vax_record|
+          vax_name = vax_record[:vax_name]
+          vax_shots = data[id][ :vax ].size
+          v_names[ vax_name ] = true
+  
+          shots_tally[ vax_name ] = {} if shots_tally[ vax_name ].nil?
+          shots_tally[ vax_name ][ vax_shots ] = {} if shots_tally[ vax_name ][ vax_shots ].nil?
+          shots_tally[ vax_name ][ vax_shots ][ id ] = true
+        end  # do
+  
+        # Tally all shot combinations
+        combo_names = v_names.keys.sort.join( "+" )
+        combo_shots[ combo_names ] = 0 if combo_shots[ combo_names ].nil?
+        combo_shots[ combo_names ] += 1
+  
+        # Tally all shot combinations by age
+        age_tally[ combo_names ] = {} if age_tally[ combo_names ].nil?
+        age_tally[ combo_names ][age] = 0 if age_tally[ combo_names ][age].nil?
+        age_tally[ combo_names ][age] += 1
+        age_tally[ combo_names ][:all] = 0 if age_tally[ combo_names ][:all].nil?
+        age_tally[ combo_names ][:all] += 1
+      end  # if
     end  # if
   end  # do
 
@@ -363,24 +376,31 @@ def shots_report( data, select )
   select.keys.each do |symptom|
     data.keys.each do |id|
       if ! data[id].nil? && ! data[id][:symptoms].nil? && ! data[id][ :vax ].nil? && data[id][:symptoms][symptom]
-        v_names = {}
-        data[id][ :vax ].each do |vax_record|
-          vax_name = vax_record[:vax_name]
-          tally[ vax_name ] = {} if tally[ vax_name ].nil?
-          tally[ vax_name ][ "All" ] = {} if tally[ vax_name ][ "All" ].nil?
-          tally[ vax_name ][ "All" ][ id ] = true 
-          vax_shots = data[id][ :vax ].size
-          tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
-          tally[ vax_name ][ vax_shots ][ id ] = true
-
-          vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-          vax_tally[ vax_name ] += 1
-          v_names[ vax_name ] = true
-        end  # do
-
-        combo_names = v_names.keys.sort.join( "+" )
-        combo_tally[ combo_names ] = 0 if combo_tally[ combo_names ].nil?
-        combo_tally[ combo_names ] += 1
+        age = data[id][:age].to_i
+        if (age >= 0) && (age <= 10)
+          v_names = {}
+          data[id][ :vax ].each do |vax_record|
+            vax_name = vax_record[:vax_name]
+            tally[ vax_name ] = {} if tally[ vax_name ].nil?
+            tally[ vax_name ][ "All" ] = {} if tally[ vax_name ][ "All" ].nil?
+            tally[ vax_name ][ "All" ][ id ] = true 
+            vax_shots = data[id][ :vax ].size
+            tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
+            tally[ vax_name ][ vax_shots ][ id ] = true
+  
+            vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+            vax_tally[ vax_name ] += 1
+            v_names[ vax_name ] = true
+          end  # do
+  
+          combo_names = v_names.keys.sort.join( "+" )
+          combo_tally[ combo_names ] = 0 if combo_tally[ combo_names ].nil?
+          combo_tally[ combo_names ] += 1
+  
+          combo_age[ combo_names ] = {} if combo_age[ combo_names ].nil?
+          combo_age[ combo_names ][age] = 0 if combo_age[ combo_names ][age].nil?
+          combo_age[ combo_names ][age] += 1
+        end  # if
       end  # if
     end  # do
   end  # do
@@ -414,13 +434,45 @@ def shots_report( data, select )
   end  # do
 
   # Print out combination tallies
-  puts "\nVaccine combination shots report"
-  puts "Combination\tReports\tShots\tFrequency"
+  # puts "\nVaccine combination shots report"
+  # puts "Combination\tReports\tShots\tFrequency"
   combo_order = combo_tally.keys.sort
-  combo_order.each do |v_name|
-    freq = combo_tally[v_name].to_f * 100000.0 / combo_shots[v_name]
-    print "#{v_name}\t#{combo_tally[v_name]}\t#{combo_shots[v_name]}\t#{freq}\n" if combo_shots[v_name] >= 10
+  # combo_order.each do |v_name|
+  #   freq = combo_age[v_name] * 100000.0 / combo_shots[v_name]
+  #   print "#{v_name}\t#{combo_age[v_name]}\t#{combo_shots[v_name]}\t#{freq}\n" if combo_shots[v_name] >= 10
+  # end  # do
+
+  # Print out the header.
+  puts "\nVaccine combination shots report by age"
+  print "Combination"
+  for age in 0..120 do
+  # for age in 0..10 do
+    print "\tAge #{age}\tAge #{age}"
   end  # do
+  print "\n"
+
+  # Print out combination tallies by age
+  combo_order.each do |c_name|
+    tally_age = age_tally[ c_name ][ :all] 
+    # tally_age = age_tally[ c_name ][ 0 ] if ! age_tally[ c_name ][ 0 ].nil?
+    age_combo = 0
+    age_combo = combo_age[ c_name ][ 0 ] if ! combo_age[ c_name ].nil? && ! combo_age[ c_name ][ 0 ].nil?
+    if tally_age > 9 || age_combo > 0
+      print "#{c_name}"
+      # for age in 0..20 do
+      for age in 0..10 do
+        tally_age = 0
+        tally_age = age_tally[ c_name ][ age ] if ! age_tally[ c_name ][ age ].nil?
+        age_combo = 0
+        age_combo = combo_age[ c_name ][ age ] if ! combo_age[ c_name ].nil? && ! combo_age[ c_name ][ age ].nil?
+        freq = 0 
+        freq = age_combo * 100000.0 / tally_age if tally_age > 0
+        print "\t#{age_combo}|#{tally_age}|#{'%.1f' % freq}\t#{'%.1f' % freq}"
+      end  # do
+      print "\n"
+    end  # if
+  end  # do
+
 end  # shots_report
 
 ################################################################################

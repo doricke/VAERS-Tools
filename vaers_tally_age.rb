@@ -189,177 +189,214 @@ def report_by_age( data )
 end  # report_by_age
 
 ################################################################################
-def report_by_dose( data )
-  puts "\nReport by dose"
-  # Tally up the doses by vaccine manufacturer and by dose
-  tally = {}
+def report_by_dose( data, oldest )
+  puts "\nReport by age: combinations"
   aes = {}
   sym_names = {}
   vax_tally = {}
+  vax_count = {}
   data.keys.each do |id|
     if ! data[id].nil? && ! data[id][:vax].nil?
+      age = data[id][ :age ].to_i
+      v_names = {}
       data[id][:vax].each do |vax_rec|
         vax_name = vax_rec[:vax_name]
-        vax_dose = vax_rec[:vax_dose]
-        tally[ vax_name ] = {} if tally[ vax_name ].nil?
-        tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
-        tally[ vax_name ][ vax_dose ] += 1
-        tally[ vax_name ][ "All" ] = 0 if tally[ vax_name ][ "All" ].nil?
-        tally[ vax_name ][ "All" ] += 1
-        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-        vax_tally[ vax_name ] += 1
-    
+        v_names[ vax_name ] = true
+      end  # do
+      combo_name = v_names.keys.sort.join( "+" )
+      i_nbn = combo_name.index( "NO BRAND NAME" )
+      i_for = combo_name.index( "FOREIGN" )
+      i_unk = combo_name.index( "UNKNOWN" )
+      
+      if i_nbn.nil? && i_for.nil? && i_unk.nil?
+      
+        if vax_tally[ combo_name ].nil?
+          vax_tally[ combo_name ] = {} 
+          vax_count[ combo_name ] = 0
+          for yr in -1..120 do
+            vax_tally[ combo_name ][ yr] = 0
+          end  # for
+        end  # if
+        vax_tally[ combo_name ][ age ] = 0 if vax_tally[ combo_name ][ age ].nil? 
+        vax_tally[ combo_name ][ age ] += 1 
+        vax_count[ combo_name ] += 1 
+      
         if ! data[id][:symptoms].nil?
-          aes[ vax_name ] = {} if aes[ vax_name ].nil? && ! vax_name.nil?
+          aes[ combo_name ] = {} if aes[ combo_name ].nil? && ! combo_name.nil?
           aes_list = data[id][:symptoms].keys 
           aes_list.each do |ae|
-            if ! vax_name.nil?
+            if ! combo_name.nil? 
               # Tally the adverse events by symptom name
               if sym_names[ ae ].nil?
                 sym_names[ ae ] = 1
               else
                 sym_names[ ae ] += 1
               end  # if
-
+  
               # Tally the adverse events by vaccine name 
-              if aes[ vax_name ][ ae ].nil?
-                aes[ vax_name ][ ae ] = 1
+              if aes[ combo_name ][ ae ].nil?
+                aes[ combo_name ][ ae ] = {}
+                aes[ combo_name ][ ae ][:all] = 1
+                for yr in -1..120 do
+                  aes[ combo_name ][ ae ][ yr ] = 0
+                end  # for
+                aes[ combo_name ][ ae ][ age ] = 1
               else
-                aes[ vax_name ][ ae ] += 1
+                aes[ combo_name ][ ae ][ age ] = 0 if aes[ combo_name ][ ae ][ age ].nil?
+                aes[ combo_name ][ ae ][ age ] += 1
+                aes[ combo_name ][ ae ][:all] += 1
               end  # if
             end  # if
           end  # do
         end  # if
-      end  # do
+      end  # if
     end  # if
   end # do
   
-  # Print table header.
-  print "Vaccine Name"
-  DOSE_NAMES.each do |dose_name|
-    print "\t#{dose_name}"
-  end  # do
-  print "\n"
- 
-  vax_names = vax_tally.sort_by{ |vax_name, count| -count }
- 
-  # Print table contents
+  vax_names = vax_tally.keys.sort
+
+  puts "Adverse Events Summary"
+  print "Symptom\tAge"
   vax_names.each do |vax_name, count|
-    print "#{vax_name}"
-    DOSE_NAMES.each do |dose_name|
-      print "\t#{tally[vax_name][dose_name]}"
+    if vax_count[vax_name] >= 100
+      print "\t#{vax_name}\t#{vax_name}" 
+    end  # if
+  end  #do
+  print "\n"
+
+  sym_order = sym_names.keys.sort
+ 
+  sym_order.each do |symptom, all|
+    print "#{symptom}\tAll"
+    vax_names.each do |vax_name, v_count|
+      if vax_count[vax_name] >= 100
+        total = vax_count[vax_name]
+        count = 0
+        count = aes[vax_name][symptom][:all] if ! aes[vax_name][symptom].nil? 
+        freq = 0
+        freq = (count * 100000)/total if ! total.nil? && total > 0
+        print "\t#{count}|#{total}|#{freq.to_i}\t#{freq.to_i}" 
+      end  # if
     end  # do
     print "\n"
-  end  # do
+  end  #do
 
+ 
   puts "\nAdverse Events Matrix"
-  print "Symptom"
+  print "Symptom\tAge"
   vax_names.each do |vax_name, count|
-    print "\t#{vax_name}"
+    print "\t#{vax_name}\t#{vax_name}" if vax_count[vax_name] >= 100
   end  #do
   print "\n"
 
-  sym_order = sym_names.sort_by{ |symptom, count| -count }
-
-  sym_order.each do |symptom, all|
-    print "#{symptom}"
-    vax_names.each do |vax_name, count|
-      count = aes[vax_name][symptom]
-      count = 0 if count.nil?
-      total = vax_tally[vax_name]
-      freq = 0
-      freq = (count * 100000)/total if ! total.nil? && total > 0
-      print "\t#{aes[vax_name][symptom]}|#{total}|#{freq.to_i}"
+  for yr in 0..oldest do
+    sym_order.each do |symptom, all|
+      print "#{symptom}\t#{yr}"
+      vax_names.each do |vax_name, count|
+        if vax_count[vax_name] >= 100
+          count = aes[vax_name][symptom][ yr ] if ! aes[vax_name].nil? && ! aes[vax_name][symptom].nil? 
+          count = 0 if count.nil?
+          total = nil
+          total = vax_tally[vax_name][ yr ] if ! vax_tally[vax_name].nil?
+          freq = 0
+          freq = (count * 100000)/total if ! total.nil? && total > 0
+          print "\t#{count}|#{total}|#{freq.to_i}\t#{freq.to_i}"
+        end  # if
+      end  # do
+      print "\n"
     end  # do
-    print "\n"
   end  # do
 
-  puts "\nAdverse Events Matrix Frequencies"
-  print "Symptom"
-  vax_names.each do |vax_name, count|
-    print "\t#{vax_name}"
-  end  #do
-  print "\n"
+  # puts "\nAdverse Events Matrix Frequencies"
+  # print "Symptom\tAge"
+  # vax_names.each do |vax_name|
+  #   print "\t#{vax_name}"
+  # end  #do
+  # print "\n"
 
-  sym_order.each do |symptom, all|
-    print "#{symptom}"
-    vax_names.each do |vax_name, count|
-      count = aes[vax_name][symptom]
-      count = 0 if count.nil?
-      total = vax_tally[vax_name]
-      freq = 0
-      freq = (count * 100000)/total if ! total.nil? && total > 0
-      print "\t#{freq.to_i}"
-    end  # do
-    print "\n"
-  end  # do
+  # for yr in 0..oldest do
+  #   sym_order.each do |symptom|
+  #     print "#{symptom}\t#{yr}"
+  #     vax_names.each do |vax_name, count|
+  #       count = aes[vax_name][symptom][ yr ] if ! aes[vax_name].nil? && ! aes[vax_name][symptom].nil? 
+  #       count = 0 if count.nil?
+  #       total = nil
+  #       total = vax_tally[vax_name][yr] if ! vax_tally[vax_name].nil?
+  #       freq = 0
+  #       freq = (count * 100000)/total if ! total.nil? && total > 0
+  #       print "\t#{freq.to_i}"
+  #     end  # do
+  #     print "\n"
+  #   end  # do
+  # end  # do
 end  # report_by_dose
 
 ################################################################################
-def report_by_onset( data )
+def report_by_onset( data, oldest )
   puts "\nReport by onset"
   tally = {}
   vax_tally = {}
-  vax_total = 0
+  # vax_total = {}
 
   data.keys.each do |id|
     if ! data[id].nil? && ! data[id][:vax].nil? && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
       data[id][:vax].each do |vax_rec|
         vax_name = vax_rec[:vax_name]
         vax_dose = vax_rec[:vax_dose]
+        age = data[id][ :age ].to_i
         onset = data[id][:onset].to_i
         onset = 999 if data[id][:onset].size == 0
-        tally[ vax_name ] = {} if tally[ vax_name ].nil?
-        tally[ vax_name ][:dose1] = {} if tally[ vax_name ][:dose1].nil?
-        tally[ vax_name ][:dose2] = {} if tally[ vax_name ][:dose2].nil?
-        tally[ vax_name ][:dose1][onset] = 0 if tally[vax_name][:dose1][onset].nil?
-        tally[ vax_name ][:dose2][onset] = 0 if tally[vax_name][:dose2][onset].nil?
-        tally[ vax_name ][:dose1][onset] += 1 if vax_dose == "1"
-        tally[ vax_name ][:dose2][onset] += 1 if vax_dose == "2"
-        tally[ vax_name ][:all] = {} if tally[ vax_name ][:all].nil?
-        tally[ vax_name ][:all][onset] = 0 if tally[vax_name][:all][onset].nil?
-        tally[ vax_name ][:all][onset] += 1
-
-        vax_total[ vax_name ] = {} if vax_total[ vax_name ].nil?
-        vax_total[ vax_name ][:dose1] = 0 if vax_total[ vax_name ][:dose1].nil?
-        vax_total[ vax_name ][:dose2] = 0 if vax_total[ vax_name ][:dose2].nil?
-        vax_total[ vax_name ][:dose1] += 1 if vax_dose == "1"
-        vax_total[ vax_name ][:dose2] += 1 if vax_dose == "2"
-        vax_total[ vax_name ][:all] = 0 if vax_total[ vax_name ][:all].nil?
-        vax_total[ vax_name ][:all] += 1
-
-        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-        vax_tally[ vax_name ] += 1
-
-        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-        vax_tally[ vax_name ] += 1
-
-        sex = data[id][:sex]
-        tally[ vax_name ][:dose1][:male] = {}   if tally[ vax_name ][:dose1][:male].nil?
-        tally[ vax_name ][:dose2][:male] = {}   if tally[ vax_name ][:dose2][:male].nil?
-        tally[ vax_name ][:dose1][:female] = {} if tally[ vax_name ][:dose1][:female].nil?
-        tally[ vax_name ][:dose2][:female] = {} if tally[ vax_name ][:dose2][:female].nil?
-
-        vax_total[ vax_name ][:dose1][:male] = 0   if vax_total[ vax_name ][:dose1][:male].nil?
-        vax_total[ vax_name ][:dose2][:male] = 0   if vax_total[ vax_name ][:dose2][:male].nil?
-        vax_total[ vax_name ][:dose1][:female] = 0 if vax_total[ vax_name ][:dose1][:female].nil?
-        vax_total[ vax_name ][:dose2][:female] = 0 if vax_total[ vax_name ][:dose2][:female].nil?
+        if age <= oldest && age >= 0
+          tally[ vax_name ] = {} if tally[ vax_name ].nil?
+          tally[ vax_name ][ age ] = {} if tally[ vax_name ][ age ].nil?
+          tally[ vax_name ][age][:dose1] = {} if tally[vax_name][age][:dose1].nil?
+          tally[ vax_name ][age][:dose2] = {} if tally[vax_name][age][:dose2].nil?
+          tally[ vax_name ][age][:dose1][onset] = 0 if tally[vax_name][age][:dose1][onset].nil?
+          tally[ vax_name ][age][:dose2][onset] = 0 if tally[vax_name][age][:dose2][onset].nil?
+          tally[ vax_name ][age][:dose1][onset] += 1 if vax_dose == "1"
+          tally[ vax_name ][age][:dose2][onset] += 1 if vax_dose == "2"
+          tally[ vax_name ][age][:all] = {} if tally[ vax_name ][age][:all].nil?
+          tally[ vax_name ][age][:all][onset] = 0 if tally[vax_name][age][:all][onset].nil?
+          tally[ vax_name ][age][:all][onset] += 1
   
-        tally[ vax_name ][:dose1][:male][onset] = 0   if tally[vax_name][:dose1][:male][onset].nil?
-        tally[ vax_name ][:dose2][:male][onset] = 0   if tally[vax_name][:dose2][:male][onset].nil?
-        tally[ vax_name ][:dose1][:female][onset] = 0 if tally[vax_name][:dose1][:female][onset].nil?
-        tally[ vax_name ][:dose2][:female][onset] = 0 if tally[vax_name][:dose2][:female][onset].nil?
-        if sex == "M"
-          tally[ vax_name ][:dose1][:male][onset] += 1 if vax_dose == "1"
-          tally[ vax_name ][:dose2][:male][onset] += 1 if vax_dose == "2"
-          vax_total[ vax_name ][:dose1][:male] += 1 if vax_dose == "1"
-          vax_total[ vax_name ][:dose2][:male] += 1 if vax_dose == "2"
-        else
-          if sex == "F"
-            tally[ vax_name ][:dose1][:female][onset] += 1 if vax_dose == "1"
-            tally[ vax_name ][:dose2][:female][onset] += 1 if vax_dose == "2"
-            vax_total[ vax_name ][:dose1][:female] += 1 if vax_dose == "1"
-            vax_total[ vax_name ][:dose2][:female] += 1 if vax_dose == "2"
+          # vax_total[ vax_name ] = {} if vax_total[ vax_name ].nil?
+          # vax_total[ vax_name ][:dose1] = 0 if vax_total[ vax_name ][:dose1].nil?
+          # vax_total[ vax_name ][:dose2] = 0 if vax_total[ vax_name ][:dose2].nil?
+          # vax_total[ vax_name ][:dose1] += 1 if vax_dose == "1"
+          # vax_total[ vax_name ][:dose2] += 1 if vax_dose == "2"
+          # vax_total[ vax_name ][:all] = 0 if vax_total[ vax_name ][:all].nil?
+          # vax_total[ vax_name ][:all] += 1
+  
+          vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+          vax_tally[ vax_name ] += 1
+  
+          sex = data[id][:sex]
+          tally[ vax_name ][age][:dose1][:male] = {}   if tally[ vax_name ][age][:dose1][:male].nil?
+          tally[ vax_name ][age][:dose2][:male] = {}   if tally[ vax_name ][age][:dose2][:male].nil?
+          tally[ vax_name ][age][:dose1][:female] = {} if tally[ vax_name ][age][:dose1][:female].nil?
+          tally[ vax_name ][age][:dose2][:female] = {} if tally[ vax_name ][age][:dose2][:female].nil?
+  
+          # vax_total[ vax_name ][:dose1][:male] = 0   if vax_total[ vax_name ][:dose1][:male].nil?
+          # vax_total[ vax_name ][:dose2][:male] = 0   if vax_total[ vax_name ][:dose2][:male].nil?
+          # vax_total[ vax_name ][:dose1][:female] = 0 if vax_total[ vax_name ][:dose1][:female].nil?
+          # vax_total[ vax_name ][:dose2][:female] = 0 if vax_total[ vax_name ][:dose2][:female].nil?
+    
+          tally[ vax_name ][age][:dose1][:male][onset] = 0   if tally[vax_name][age][:dose1][:male][onset].nil?
+          tally[ vax_name ][age][:dose2][:male][onset] = 0   if tally[vax_name][age][:dose2][:male][onset].nil?
+          tally[ vax_name ][age][:dose1][:female][onset] = 0 if tally[vax_name][age][:dose1][:female][onset].nil?
+          tally[ vax_name ][age][:dose2][:female][onset] = 0 if tally[vax_name][age][:dose2][:female][onset].nil?
+          if sex == "M"
+            tally[ vax_name ][:dose1][:male][onset] += 1 if vax_dose == "1"
+            tally[ vax_name ][:dose2][:male][onset] += 1 if vax_dose == "2"
+            # vax_total[ vax_name ][:dose1][:male] += 1 if vax_dose == "1"
+            # vax_total[ vax_name ][:dose2][:male] += 1 if vax_dose == "2"
+          else
+            if sex == "F"
+              tally[ vax_name ][:dose1][:female][onset] += 1 if vax_dose == "1"
+              tally[ vax_name ][:dose2][:female][onset] += 1 if vax_dose == "2"
+              # vax_total[ vax_name ][:dose1][:female] += 1 if vax_dose == "1"
+              # vax_total[ vax_name ][:dose2][:female] += 1 if vax_dose == "2"
+            end  # if
           end  # if
         end  # if
       end  # do
@@ -370,42 +407,51 @@ def report_by_onset( data )
 
   # Print table contents by increasing onset.
   vax_names.each do |vax_name, count|
-    print "Vaccine\tOnset\tTotal\tDose1 all\tDose2 all\tDose1 male\tDose2 male\tDose1 female\tDose2 female\t"
+    print "Vaccine\tAge\tOnset\tTotal\tDose1 all\tDose2 all\tDose1 male\tDose2 male\tDose1 female\tDose2 female\t"
   end  # do
   print "\n"
 
-  for onset in -1..120 do
-    vax_names.each do |vax_name, count|
-      total = tally[vax_name][:all][onset]
-      print "#{vax_name}\t#{onset}\t#{total}\t#{tally[vax_name][:dose1][onset]}\t#{tally[vax_name][:dose2][onset]}\t"
-      male1 = tally[vax_name][:dose1][:male][onset]
-      male2 = tally[vax_name][:dose2][:male][onset]
-      female1 = tally[vax_name][:dose1][:female][onset]
-      female2 = tally[vax_name][:dose2][:female][onset]
-      print "#{male1}\t#{male2}\t#{female1}\t#{female2}\t"
-    end  # do
-    print "\n"
+  for age in 0..oldest do
+    for onset in -1..120 do
+      vax_names.each do |vax_name, count|
+        total = tally[vax_name][age][:all][onset]
+        print "#{vax_name}\t#{age}\t#{onset}\t#{total}\t#{tally[vax_name][:dose1][onset]}\t#{tally[vax_name][:dose2][onset]}\t"
+        male1 = tally[vax_name][age][:dose1][:male][onset]
+        male2 = tally[vax_name][age][:dose2][:male][onset]
+        female1 = tally[vax_name][age][:dose1][:female][onset]
+        female2 = tally[vax_name][age][:dose2][:female][onset]
+        print "#{male1}\t#{male2}\t#{female1}\t#{female2}\t"
+      end  # do
+      print "\n"
+    end  # for
   end  # for
 end  # report_by_onset
 
 ################################################################################
-def report_by_onset_all( data )
+def report_by_onset_all( data, oldest )
   puts "\nReport by onset"
   tally = {}
   vax_tally = {}
   data.keys.each do |id|
     if ! data[id].nil? && ! data[id][:vax].nil? && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
       data[id][:vax].each do |vax_rec|
+        age = data[id][ :age ].to_i
         vax_name = vax_rec[:vax_name]
         onset = data[id][:onset].to_i
         onset = 999 if data[id][:onset].size == 0
-        tally[ vax_name ] = {} if tally[ vax_name ].nil?
-        tally[ vax_name ][:all] = {} if tally[ vax_name ][:all].nil?
-        tally[ vax_name ][:all][onset] = 0 if tally[vax_name][:all][onset].nil?
-        tally[ vax_name ][:all][onset] += 1
+        if age <= oldest && age >= 0
+          tally[ vax_name ] = {} if tally[ vax_name ].nil?
+          tally[ vax_name ][age] = {} if tally[ vax_name ][ age ].nil?
+          tally[ vax_name ][age][:all] = {} if tally[ vax_name ][age][:all].nil?
+          tally[ vax_name ][age][:all][onset] = 0 if tally[vax_name][age][:all][onset].nil?
+          tally[ vax_name ][age][:all][onset] += 1
 
-        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-        vax_tally[ vax_name ] += 1
+          tally[ vax_name ][age][:total] = 0 if tally[vax_name][age][:total].nil?
+          tally[ vax_name ][age][:total] += 1
+
+          vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+          vax_tally[ vax_name ] += 1
+        end  # if
       end  # do
     end  # if 
   end  # do
@@ -413,22 +459,82 @@ def report_by_onset_all( data )
   vax_names = vax_tally.sort_by{ |vax_name, count| -count }
 
   # Print table contents by increasing onset.
-  print "Onset"
+  print "Onset\tAge"
   vax_names.each do |vax_name, count|
     print "\t#{vax_name}"
   end  # do
   print "\n"
 
-  for onset in -1..120 do
-    print "#{onset}"
-    vax_names.each do |vax_name, count|
-      total = 0
-      total = tally[vax_name][:all][onset] if ! tally[vax_name].nil? && ! tally[vax_name][:all].nil? && ! tally[vax_name][:all][onset].nil?
-      print "\t#{total}"
-    end  # do
-    print "\n"
+  for age in 0..oldest do
+    for onset in -1..120 do
+      print "#{onset}\t#{age}"
+      vax_names.each do |vax_name, vax_count|
+        count = 0
+        count = tally[vax_name][age][:all][onset] if ! tally[vax_name].nil? && ! tally[vax_name][age].nil? && ! tally[vax_name][age][:all].nil? && ! tally[vax_name][age][:all][onset].nil?
+        total = 0
+        total = tally[vax_name][age][:total] if ! tally[vax_name].nil? && ! tally[vax_name][age].nil? && ! tally[vax_name][age][:total].nil?
+        freq = 0
+        freq = (count * 100000)/total if ! total.nil? && total > 0
+        print "\t#{count}|#{total}|#{freq}"
+      end  # do
+      print "\n"
+    end  # for
   end  # for
 end  # report_by_onset_all
+
+################################################################################
+def report_by_combo_age( data, oldest )
+  puts "\nReport by onset"
+  tally = {}
+  vax_tally = {}
+  data.keys.each do |id|
+    if ! data[id].nil? && ! data[id][:vax].nil? && ! data[id][:symptoms].nil? # && ! data[id][:symptoms]["Vaccination failure"]
+      age = data[id][ :age ].to_i
+      if age <= oldest && age >= 0
+        v_names = {}
+        data[id][:vax].each do |vax_rec|
+          vax_name = vax_rec[:vax_name]
+          v_names[ vax_name ] = true
+        end  # do
+
+        # Tally all shot combinations
+        combo_names = v_names.keys.sort.join( "+" )
+        tally[ combo_names ] = {} if tally[ combo_names ].nil?
+        tally[ combo_names ][age] = 0 if tally[ combo_names ].nil?
+        tally[ combo_names ][age] += 1
+
+        # Tally by symptoms
+        vax_tally[ combo_names ] = 0 if vax_tally[ combo_names ].nil?
+        vax_tally[ combo_names ] += 1
+      end  # if
+    end  # if 
+  end  # do
+
+  vax_names = vax_tally.sort_by{ |vax_name, count| -count }
+
+  # Print table contents by increasing onset.
+  print "Onset\tAge"
+  vax_names.each do |vax_name, count|
+    print "\t#{vax_name}"
+  end  # do
+  print "\n"
+
+  for age in 0..oldest do
+    for onset in -1..120 do
+      print "#{onset}\t#{age}"
+      vax_names.each do |vax_name, vax_count|
+        count = 0
+        count = tally[vax_name][age][:all][onset] if ! tally[vax_name].nil? && ! tally[vax_name][age].nil? && ! tally[vax_name][age][:all].nil? && ! tally[vax_name][age][:all][onset].nil?
+        total = 0
+        total = tally[vax_name][age][:total] if ! tally[vax_name].nil? && ! tally[vax_name][age].nil? && ! tally[vax_name][age][:total].nil?
+        freq = 0
+        freq = (count * 100000)/total if ! total.nil? && total > 0
+        print "\t#{count}|#{total}|#{freq}"
+      end  # do
+      print "\n"
+    end  # for
+  end  # for
+end  # report_by_combo_age
 
 ################################################################################
 def report_by_shots( data )
@@ -515,10 +621,10 @@ def vaers_main()
   end  # for
   data = app.load_year( "NonDomestic", symptoms, data )
 
-  app.report_by_dose( data )
-  app.report_by_onset_all( data )
-  app.report_by_age( data )
-  app.report_by_shots( data )
+  app.report_by_dose( data, 6 )
+  # app.report_by_onset_all( data, 1 )
+  # app.report_by_age( data )
+  # app.report_by_shots( data )
 end  # vaers_main
 
 ################################################################################

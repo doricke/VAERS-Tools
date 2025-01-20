@@ -1,6 +1,6 @@
 
 require 'input_file.rb'
-require 'output_file.rb'
+# require 'output_file.rb'
 require 'table.rb'
 require 'text_tools.rb'
 
@@ -232,40 +232,38 @@ def report_by_dose( data )
         vax_dose = vax_rec[:vax_dose]
         vax_year = data[id][:year]
         age = data[id][ :age ]
-        if age < 3 && age >= 0
-          tally[ vax_name ] = {} if tally[ vax_name ].nil?
-          tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
-          tally[ vax_name ][ vax_dose ] += 1
-          tally[ vax_name ][ "All" ] = 0 if tally[ vax_name ][ "All" ].nil?
-          tally[ vax_name ][ "All" ] += 1
-          vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-          vax_tally[ vax_name ] += 1
-     
-          yearly_shots[ vax_name ] = {} if yearly_shots[ vax_name ].nil?
-          yearly_shots[ vax_name ][ vax_year ] = 0 if yearly_shots[ vax_name ][ vax_year ].nil?
-          yearly_shots[ vax_name ][ vax_year ] += 1
-  
-          if ! data[id][:symptoms].nil?
-            aes[ vax_name ] = {} if aes[ vax_name ].nil? && ! vax_name.nil?
-            aes_list = data[id][:symptoms].keys 
-            aes_list.each do |ae|
-              if ! vax_name.nil?
-                # Tally the adverse events by symptom name
-                if sym_names[ ae ].nil?
-                  sym_names[ ae ] = 1
-                else
-                  sym_names[ ae ] += 1
-                end  # if
-  
-                # Tally the adverse events by vaccine name 
-                if aes[ vax_name ][ ae ].nil?
-                  aes[ vax_name ][ ae ] = 1
-                else
-                  aes[ vax_name ][ ae ] += 1
-                end  # if
+        tally[ vax_name ] = {} if tally[ vax_name ].nil?
+        tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
+        tally[ vax_name ][ vax_dose ] += 1
+        tally[ vax_name ][ "All" ] = 0 if tally[ vax_name ][ "All" ].nil?
+        tally[ vax_name ][ "All" ] += 1
+        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+        vax_tally[ vax_name ] += 1
+   
+        yearly_shots[ vax_name ] = {} if yearly_shots[ vax_name ].nil?
+        yearly_shots[ vax_name ][ vax_year ] = 0 if yearly_shots[ vax_name ][ vax_year ].nil?
+        yearly_shots[ vax_name ][ vax_year ] += 1
+
+        if ! data[id][:symptoms].nil?
+          aes[ vax_name ] = {} if aes[ vax_name ].nil? && ! vax_name.nil?
+          aes_list = data[id][:symptoms].keys 
+          aes_list.each do |ae|
+            if ! vax_name.nil?
+              # Tally the adverse events by symptom name
+              if sym_names[ ae ].nil?
+                sym_names[ ae ] = 1
+              else
+                sym_names[ ae ] += 1
               end  # if
-            end  # do
-          end  # if
+
+              # Tally the adverse events by vaccine name 
+              if aes[ vax_name ][ ae ].nil?
+                aes[ vax_name ][ ae ] = 1
+              else
+                aes[ vax_name ][ ae ] += 1
+              end  # if
+            end  # if
+          end  # do
         end  # if
       end  # do
     end  # if
@@ -464,16 +462,14 @@ def report_by_shots( data )
         vax_name = vax_rec[:vax_name]
         vax_shots = data[id][ :vax ].size
         age = data[id][ :age ]
-        if age < 3 && age >= 0
-          tally[ vax_name ] = {} if tally[ vax_name ].nil?
-          tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
-          tally[ vax_name ][ vax_shots ][ id ] = true
-          tally[ vax_name ][ :all ] = {} if tally[ vax_name ][ :all ].nil?
-          tally[ vax_name ][ :all ][ id ] = true
+        tally[ vax_name ] = {} if tally[ vax_name ].nil?
+        tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
+        tally[ vax_name ][ vax_shots ][ id ] = true
+        tally[ vax_name ][ :all ] = {} if tally[ vax_name ][ :all ].nil?
+        tally[ vax_name ][ :all ][ id ] = true
 
-          vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
-          vax_tally[ vax_name ] += 1
-        end  # if
+        vax_tally[ vax_name ] = 0 if vax_tally[ vax_name ].nil?
+        vax_tally[ vax_name ] += 1
       end  # do
     end  # if
   end  # do
