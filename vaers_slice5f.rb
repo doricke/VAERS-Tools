@@ -19,6 +19,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
+require 'date'
 require './input_file'
 require './table'
 require './text_tools'
@@ -118,6 +119,16 @@ def read_vax( filename, data, vaccines )
 end  # read_vax
 
 ################################################################################
+def to_date( vax_date )
+  return nil if vax_date.size < 1   # No date specified
+  parts = vax_date.split( "/" )
+  month = parts[0].to_i
+  day = parts[1].to_i
+  year = parts[2].to_i
+  return Date.new(year, month, day)
+end  # to_date
+
+################################################################################
 def read_data( filename, data )
   in_file = InputFile.new( filename )
   in_file.open_file
@@ -127,17 +138,21 @@ def read_data( filename, data )
     if ! line.nil? && line.length > 0
       tokens = TextTools::csv_split( line.chomp )
       order = tokens[35].to_i
-      if order < 2
+      gender = tokens[ 6 ]
+      if (order < 2) && (gender == "F")
         vaers_id = tokens[0].to_i
         data[ vaers_id ] = {} if data[ vaers_id ].nil?
         data[ vaers_id ][ :state ] = tokens[2]
         data[ vaers_id ][ :age ] = tokens[3]
+        data[ vaers_id ][ :gender ] = gender
         data[ vaers_id ][ :age ] = -1 if tokens[3].nil? || tokens[3].size < 1
-        data[ vaers_id ][ :gender ] = tokens[ 6 ]
         # data[ vaers_id ][ :symptom_text ] = tokens[ 8 ]
         data[ vaers_id ][ :died ] = tokens[9]
         data[ vaers_id ][ :onset ] = tokens[20].to_i
         data[ vaers_id ][ :onset ] = -1 if tokens[20].size < 1
+        vax_date = tokens[19]
+        # vax_date = tokens[1] if tokens[19].size < 1  # RECVDATE
+        data[ vaers_id ][ :vax_date ] = to_date( vax_date )
         # data[ vaers_id ][ :lab_data ] = tokens[ 21 ]
         # tokens[22] V_ADMINBY
         parts = tokens[1].split( "/" )    # RECVDATE
@@ -591,7 +606,8 @@ def age_report_frequency_years( vax_names, tally, vax_total )
   print "\n"
 
   # Print out the age report table with normalized frequencies.
-  min_age = 0
+  # min_age = 0
+  min_age = 1
   for max_age in (10..120).step(10) do
     print "#{min_age} to #{max_age}"
     vax_names.each do |vax_name, count|
@@ -1005,6 +1021,7 @@ end  # symptoms_report
 ################################################################################
 def lot_report( data, select )
   total = {}
+  lot_date = {}
   data.keys.each do |id|
     if ! data[id].nil? && ! data[id][ :vax ].nil?
       data[id][ :vax ].each do |vax_record|
@@ -1013,6 +1030,12 @@ def lot_report( data, select )
         total[ vax_name ] = {} if total[ vax_name ].nil?
         total[ vax_name ][ vax_lot ] = 0 if total[ vax_name ][ vax_lot ].nil?
         total[ vax_name ][ vax_lot ] += 1
+        vax_date = data[id][:vax_date]
+        if lot_date[ vax_lot ].nil?
+          lot_date[ vax_lot ] = vax_date
+        else
+          lot_date[ vax_lot ] = vax_date if ! vax_date.nil? && (vax_date < lot_date[ vax_lot ])
+        end  # if
       end  # do
     end  # if
   end  # do
@@ -1057,6 +1080,16 @@ def lot_report( data, select )
         freq = 0.0
         freq = (count * 100000) / shots if shots > 0
         print "\t#{count}|#{shots}|#{'%.0f' % freq}"
+      end  # if
+    end  # do  
+    print "\n"
+
+    print "#{vax_name}"
+    lot_names.each do |vax_lot, count|
+      if ! lot_date[vax_lot].nil?
+        print "\t#{lot_date[vax_lot].strftime('%m/%d/%Y')}"
+      else
+        print "\t"
       end  # if
     end  # do  
     print "\n"
