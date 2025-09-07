@@ -30,13 +30,14 @@ def scan_symptoms( filename, symptoms, data )
     if ( ! line.nil? ) && ( line.length > 0 )
       tokens = TextTools::csv_split( line.chomp )
       vaers_id = tokens[0].to_i
-      data[ vaers_id ] = {} if data[ vaers_id ].nil?
-      data[ vaers_id ][ :symptoms ] = {} if data[ vaers_id ][ :symptoms ].nil?
-      data[ vaers_id ][ :symptoms ][ tokens[1] ] = true if ! tokens[1].nil? && tokens[1].size > 0
-      data[ vaers_id ][ :symptoms ][ tokens[3] ] = true if ! tokens[3].nil? && tokens[3].size > 0
-      data[ vaers_id ][ :symptoms ][ tokens[5] ] = true if ! tokens[5].nil? && tokens[5].size > 0
-      data[ vaers_id ][ :symptoms ][ tokens[7] ] = true if ! tokens[7].nil? && tokens[7].size > 0
-      data[ vaers_id ][ :symptoms ][ tokens[9] ] = true if ! tokens[9].nil? && tokens[9].size > 0
+      if ! data[ vaers_id ].nil?
+        data[ vaers_id ][ :symptoms ] = {} if data[ vaers_id ][ :symptoms ].nil?
+        data[ vaers_id ][ :symptoms ][ tokens[1] ] = true if ! tokens[1].nil? && tokens[1].size > 0
+        data[ vaers_id ][ :symptoms ][ tokens[3] ] = true if ! tokens[3].nil? && tokens[3].size > 0
+        data[ vaers_id ][ :symptoms ][ tokens[5] ] = true if ! tokens[5].nil? && tokens[5].size > 0
+        data[ vaers_id ][ :symptoms ][ tokens[7] ] = true if ! tokens[7].nil? && tokens[7].size > 0
+        data[ vaers_id ][ :symptoms ][ tokens[9] ] = true if ! tokens[9].nil? && tokens[9].size > 0
+      end  # if
     end  # if
   end  # while
   in_file.close_file
@@ -45,7 +46,7 @@ def scan_symptoms( filename, symptoms, data )
 end  # scan_symptoms
 
 ################################################################################
-def scan_data( filename, data )
+def scan_data( filename, data, gender_selected )
   in_file = InputFile.new( filename )
   in_file.open_file
   line = in_file.next_line  # skip header line
@@ -61,15 +62,18 @@ def scan_data( filename, data )
         died = tokens[9]
         onset = tokens[20]
         onset = -1 if tokens[20].size < 1
-        data[vaers_id] = {} if data[vaers_id ].nil?
         sex = tokens[6]
+        sex = "U" if tokens[6].nil? || tokens[6].size < 1
         onset = tokens[20].to_i
-        data[ vaers_id ][ :age ] = age
-        data[ vaers_id ][ :died ] = died
-        data[ vaers_id ][ :sex ] = sex
-        data[ vaers_id ][ :onset ] = onset
-        data[ vaers_id ][ :onset ] = 999 if tokens[20].size < 1
-        # puts "#{vaers_id}\tAge: #{age}\tSex: #{sex}\tOnset: #{onset}"
+        if sex == gender_selected
+          data[ vaers_id ] = {} if data[ vaers_id ].nil?
+          data[ vaers_id ][ :age ] = age
+          data[ vaers_id ][ :died ] = died
+          data[ vaers_id ][ :sex ] = sex
+          data[ vaers_id ][ :onset ] = onset
+          data[ vaers_id ][ :onset ] = 999 if tokens[20].size < 1
+          # puts "#{vaers_id}\tAge: #{age}\tSex: #{sex}\tOnset: #{onset}"
+        end  # if
       end  # if
     end  # if
   end  # while
@@ -94,8 +98,10 @@ def scan_vax( filename, data )
       # vax_name = vax_type
 
       vax_rec = { :vax_name => vax_name, :vax_dose => vax_dose }
-      data[ vaers_id ][ :vax ] = [] if data[ vaers_id ][ :vax ].nil?
-      data[ vaers_id ][ :vax ].push( vax_rec )
+      if ! data[ vaers_id ].nil?
+        data[ vaers_id ][ :vax ] = [] if data[ vaers_id ][ :vax ].nil?
+        data[ vaers_id ][ :vax ].push( vax_rec )
+      end  # if
     end  # if
   end  # while
   in_file.close_file
@@ -494,9 +500,9 @@ def filter_symptoms( data )
 end  # filter_symptoms
 
 ################################################################################
-def load_year( year, symptoms, data )
+def load_year( year, symptoms, data, gender )
+  data = scan_data( "#{year}VAERSDATA.csv", data, gender )
   data = scan_symptoms( "#{year}VAERSSYMPTOMS.csv", symptoms, data )
-  data = scan_data( "#{year}VAERSDATA.csv", data )
   data = scan_vax( "#{year}VAERSVAX.csv", data )
   return data 
 end  # load_year
@@ -506,16 +512,16 @@ end  # load_year
 end  # class
 
 ################################################################################
-def vaers_main()
+def vaers_main( gender )
   data = {}
   app = VaersTally.new
   symptoms = {}
 
   # Read in the VAERS yearly datafiles.
   for year in 1990..2025 do
-    data = app.load_year( year.to_s, symptoms, data )
+    data = app.load_year( year.to_s, symptoms, data, gender )
   end  # for
-  data = app.load_year( "NonDomestic", symptoms, data )
+  data = app.load_year( "NonDomestic", symptoms, data, gender )
 
   app.report_by_dose( data )
   app.report_by_onset_all( data )
@@ -524,4 +530,6 @@ def vaers_main()
 end  # vaers_main
 
 ################################################################################
-vaers_main()
+gender = "M"
+gender = ARGV[0] if ARGV.length >= 1
+vaers_main( gender )
