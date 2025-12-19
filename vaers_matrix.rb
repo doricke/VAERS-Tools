@@ -1,6 +1,26 @@
 
+################################################################################
+# Author::      Darrell O. Ricke, Ph.D.  (mailto: doricke@molecularbioinsights.com)
+# Copyright::   Copyright (C) 2022 Darrell O. Ricke, Ph.D., Molecular BioInsights
+# License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
+# Contact::     Molecular BioInsights, 37 Pilgrim Dr., MA 01890
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
+
 require 'input_file.rb'
-# require 'output_file.rb'
+require 'output_file.rb'
 require 'table.rb'
 require 'text_tools.rb'
 
@@ -54,21 +74,24 @@ def scan_data( filename, data )
     line = in_file.next_line
     if ( ! line.nil? ) && ( line.length > 0 )
       tokens = TextTools::csv_split( line )
-      vaers_id = tokens[0].to_i
-      age = tokens[3].to_i
-      age = -1 if tokens[3].nil? || tokens[3].size < 1
-      died = tokens[9]
-      onset = tokens[20]
-      data[vaers_id] = {} if data[vaers_id ].nil?
-      sex = tokens[6]
-      onset = tokens[20].to_i
-      data[ vaers_id ][ :age ] = age
-      data[ vaers_id ][ :died ] = died
-      data[ vaers_id ][ :sex ] = sex
-      data[ vaers_id ][ :onset ] = onset
-      parts = tokens[1].split( "/" )    #RECVDATE
-      data[ vaers_id ][ :year ] = parts[2].to_i
-      # puts "#{vaers_id}\tAge: #{age}\tSex: #{sex}\tOnset: #{onset}"
+      order = tokens[35].to_i
+      if order < 2
+        vaers_id = tokens[0].to_i
+        age = tokens[3].to_i
+        age = -1 if tokens[3].nil? || tokens[3].size < 1
+        died = tokens[9]
+        onset = tokens[20]
+        data[vaers_id] = {} if data[vaers_id ].nil?
+        sex = tokens[6]
+        onset = tokens[20].to_i
+        data[ vaers_id ][ :age ] = age
+        data[ vaers_id ][ :died ] = died
+        data[ vaers_id ][ :sex ] = sex
+        data[ vaers_id ][ :onset ] = onset
+        parts = tokens[1].split( "/" )    #RECVDATE
+        data[ vaers_id ][ :year ] = parts[2].to_i
+        # puts "#{vaers_id}\tAge: #{age}\tSex: #{sex}\tOnset: #{onset}"
+      end  # if
     end  # if
   end  # while
   in_file.close_file
@@ -114,8 +137,8 @@ def scan_vax2( filename, data )
       vaers_id = tokens[0].to_i
       vax_type = tokens[1]
       vax_dose = tokens[4]
-      # vax_name = tokens[7]
-      vax_name = vax_type
+      vax_name = tokens[7]
+      # vax_name = vax_type
 
       vax_rec = { :vax_name => vax_name, :vax_dose => vax_dose }
       data[ vaers_id ][ :vax ] = [] if data[ vaers_id ][ :vax ].nil?
@@ -231,7 +254,6 @@ def report_by_dose( data )
         vax_name = vax_rec[:vax_name]
         vax_dose = vax_rec[:vax_dose]
         vax_year = data[id][:year]
-        age = data[id][ :age ]
         tally[ vax_name ] = {} if tally[ vax_name ].nil?
         tally[ vax_name ][ vax_dose ] = 0 if tally[ vax_name ][ vax_dose ].nil?
         tally[ vax_name ][ vax_dose ] += 1
@@ -290,7 +312,7 @@ def report_by_dose( data )
   # Summary of adverse events by year
   puts "\nYear report"
   print "Vaccine Name\tAll"
-  for year in (2024..1990).step(-1) do
+  for year in (2025..1990).step(-1) do
     print "\t#{year}"
   end  # for
   print "\n"
@@ -298,7 +320,7 @@ def report_by_dose( data )
   vax_names.each do |vax_name, count|
     print "#{vax_name}"
     print "\t#{tally[vax_name]['All']}"
-    for year in (2024..1990).step(-1) do
+    for year in (2025..1990).step(-1) do
       count = 0
       count = yearly_shots[ vax_name ][ year ] if ! yearly_shots[ vax_name ][ year ].nil?
       print "\t#{count}"
@@ -461,7 +483,6 @@ def report_by_shots( data )
       data[id][:vax].each do |vax_rec|
         vax_name = vax_rec[:vax_name]
         vax_shots = data[id][ :vax ].size
-        age = data[id][ :age ]
         tally[ vax_name ] = {} if tally[ vax_name ].nil?
         tally[ vax_name ][ vax_shots ] = {} if tally[ vax_name ][ vax_shots ].nil?
         tally[ vax_name ][ vax_shots ][ id ] = true
@@ -530,7 +551,8 @@ def vaers_main()
   app = VaersMatrix.new
   symptoms = {}
 
-  for year in 1990..2024 do
+  # for year in 2022..2025 do
+  for year in 1990..2025 do
     data = app.load_year( year.to_s, symptoms, data )
   end  # for
   data = app.load_year( "NonDomestic", symptoms, data )
