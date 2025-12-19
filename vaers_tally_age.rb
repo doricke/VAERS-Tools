@@ -1,4 +1,24 @@
 
+################################################################################
+# Author::      Darrell O. Ricke, Ph.D.  (mailto: doricke@molecularbioinsights.com)
+# Copyright::   Copyright (C) 2025 Darrell O. Ricke, Ph.D., Molecular BioInsights
+# License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
+# Contact::     Molecular BioInsights, 37 Pilgrim Dr., MA 01890
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
+
 require 'input_file.rb'
 require 'table.rb'
 require 'text_tools.rb'
@@ -53,20 +73,23 @@ def scan_data( filename, data )
     line = in_file.next_line
     if ( ! line.nil? ) && ( line.length > 0 )
       tokens = TextTools::csv_split( line )
-      vaers_id = tokens[0].to_i
-      age = tokens[3].to_i
-      age = -1 if tokens[3].size < 1
-      died = tokens[9]
-      onset = tokens[20]
-      onset = -1 if tokens[20].size < 1
-      data[vaers_id] = {} if data[vaers_id ].nil?
-      sex = tokens[6]
-      onset = tokens[20].to_i
-      data[ vaers_id ][ :age ] = age
-      data[ vaers_id ][ :died ] = died
-      data[ vaers_id ][ :sex ] = sex
-      data[ vaers_id ][ :onset ] = onset
-      # puts "#{vaers_id}\tAge: #{age}\tSex: #{sex}\tOnset: #{onset}"
+      order = tokens[35].to_i
+      if order < 2
+        vaers_id = tokens[0].to_i
+        age = tokens[3].to_i
+        age = -1 if tokens[3].size < 1
+        died = tokens[9]
+        onset = tokens[20]
+        onset = -1 if tokens[20].size < 1
+        data[vaers_id] = {} if data[vaers_id ].nil?
+        sex = tokens[6]
+        onset = tokens[20].to_i
+        data[ vaers_id ][ :age ] = age
+        data[ vaers_id ][ :died ] = died
+        data[ vaers_id ][ :sex ] = sex
+        data[ vaers_id ][ :onset ] = onset
+        # puts "#{vaers_id}\tAge: #{age}\tSex: #{sex}\tOnset: #{onset}"
+      end  # if
     end  # if
   end  # while
   in_file.close_file
@@ -616,12 +639,12 @@ def vaers_main()
   symptoms = {}
 
   # Read in the VAERS yearly datafiles.
-  for year in 1990..2024 do
+  for year in 1990..2023 do
     data = app.load_year( year.to_s, symptoms, data )
   end  # for
-  data = app.load_year( "NonDomestic", symptoms, data )
+  # data = app.load_year( "NonDomestic", symptoms, data )
 
-  app.report_by_dose( data, 6 )
+  app.report_by_dose( data, 17 )
   # app.report_by_onset_all( data, 1 )
   # app.report_by_age( data )
   # app.report_by_shots( data )
