@@ -1,6 +1,6 @@
 
 ################################################################################
-# Author::      Darrell O. Ricke, Ph.D.  (mailto: d_ricke@yahoo.com)
+# Author::      Darrell O. Ricke, Ph.D.  (mailto: doricke@molecularbioinsights.com)
 # Copyright::   Copyright (C) 2022 Darrell O. Ricke, Ph.D., Molecular BioInsights
 # License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
 # Contact::     Molecular BioInsights, 37 Pilgrim Dr., MA 01890
@@ -128,7 +128,6 @@ def read_data( filename, data )
         data[ vaers_id ][ :gender ] = tokens[ 6 ]
         data[ vaers_id ][ :died ] = tokens[9]
         data[ vaers_id ][ :onset ] = tokens[20].to_i
-        data[ vaers_id ][ :onset ] = -1 if tokens[20].size < 1
         parts = tokens[1].split( "/" )    # RECVDATE
         data[ vaers_id ][ :year ] = parts[2].to_i
       end  # if
@@ -348,7 +347,7 @@ def onset_report_write( vax_names, dose_names, tally )
   print "\n"
 
   # Print out the onset table.
-  for onset in -1..120 do
+  for onset in 0..120 do
     print "#{onset}"
     vax_names.each do |vax_name, count|
       dose_names.each do |dose_name|

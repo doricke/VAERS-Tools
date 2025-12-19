@@ -1,6 +1,6 @@
 
 ################################################################################
-# Author::      Darrell O. Ricke, Ph.D.  (mailto: d_ricke@yahoo.com)
+# Author::      Darrell O. Ricke, Ph.D.  (mailto: doricke@molecularbioinsights.com)
 # Copyright::   Copyright (C) 2022 Darrell O. Ricke, Ph.D., Molecular BioInsights
 # License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
 # Contact::     Molecular BioInsights, 37 Pilgrim Dr., MA 01890
@@ -24,7 +24,7 @@ require './table'
 require './text_tools'
 
 ################################################################################
-class VaersSlice4
+class VaersSlice5
 
 ################################################################################
 DOSE_NAMES = ["All", "1", "2", "3", "4", "5", "6", "7+", "UNK", "N/A"]
@@ -1128,16 +1128,16 @@ def vaers_main( select_filename )
   correlation_report( data, select )
   symptoms_report( data, select )
   lot_report( data, select )
-# data_report( data, select )
+  data_report( data, select )
 end  # vaers_main 
 
 ################################################################################
 
-end  # class VaersSlice4
+end  # class VaersSlice5
 
 ################################################################################
 def main( select_filename )
-  app = VaersSlice4.new
+  app = VaersSlice5.new
   app.vaers_main( select_filename )
 end  # main
 

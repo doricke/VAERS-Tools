@@ -1,6 +1,6 @@
 
 ################################################################################
-# Author::      Darrell O. Ricke, Ph.D.  (mailto: d_ricke@yahoo.com)
+# Author::      Darrell O. Ricke, Ph.D.  (mailto: doricke@molecularbioinsights.com)
 # Copyright::   Copyright (C) 2022 Darrell O. Ricke, Ph.D., Molecular BioInsights
 # License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
 # Contact::     Molecular BioInsights, 37 Pilgrim Dr., MA 01890
