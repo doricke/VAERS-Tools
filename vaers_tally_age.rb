@@ -1,7 +1,7 @@
 
 ################################################################################
 # Author::      Darrell O. Ricke, Ph.D.  (mailto: doricke@molecularbioinsights.com)
-# Copyright::   Copyright (C) 2025 Darrell O. Ricke, Ph.D., Molecular BioInsights
+# Copyright::   Copyright (C) 2026 Darrell O. Ricke, Ph.D., Molecular BioInsights
 # License::     GNU GPL license:  http://www.gnu.org/licenses/gpl.html
 # Contact::     Molecular BioInsights, 37 Pilgrim Dr., MA 01890
 #
@@ -639,12 +639,12 @@ def vaers_main()
   symptoms = {}
 
   # Read in the VAERS yearly datafiles.
-  for year in 1990..2023 do
+  for year in 1990..2026 do
     data = app.load_year( year.to_s, symptoms, data )
   end  # for
-  # data = app.load_year( "NonDomestic", symptoms, data )
+  data = app.load_year( "NonDomestic", symptoms, data )
 
-  app.report_by_dose( data, 17 )
+  app.report_by_dose( data, 7 )
   # app.report_by_onset_all( data, 1 )
   # app.report_by_age( data )
   # app.report_by_shots( data )

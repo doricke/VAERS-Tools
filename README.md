@@ -33,9 +33,10 @@ Running vaers_slice.rb
 
         Dysmenorrhoea
 
-  6. Run the ruby_slice.rb program
+  6. Run the ruby_slice.rb program.  Version 8 and above accept the additional command line argument to select "all", "domestic", or "foreign" VAERS data selections; the default is now "domestic".
 
-        ruby vaers_slice.rb dysmenorrhoea.txt > R_dysmenorrhoea.tsv
+        ruby vaers_slice8.rb dysmenorrhoea.txt > R_dysmenorrhoea.tsv
+        ruby vaers_slice8.rb dysmenorrhoea.txt all > R_dysmenorrhoea_all.tsv
 
   7. The tab-delimited reports are written to the specified output file (e.g., R_dysmenorrhoea.tsv).
 	These reports include:
@@ -45,6 +46,8 @@ Running vaers_slice.rb
 	- Day of onset report by vaccine 
 	- Co-occurrence report for selected adverse events 
 	- Other symptoms reported by vaccinees with selected adverse events
+
+Note: When presented, data representations include <adverse events>|<# reports>|<frequency> in multiple tables.
 
 <h3>Report excerpts from vaers_slice.rb (Data to Sept 2, 2022)</h3>:
 
